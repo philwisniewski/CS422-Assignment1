@@ -44,18 +44,20 @@ def distance(origin, destination):
     return d
 
 def ping_one(ip):
+  # retry 3x
   for _ in range(3):
-    # send 3 packets and take average RTT
-    command = ["ping", "-c", "3", ip]
+    # send 5 packets and take average RTT
+    command = ["ping", "-c", "5", ip]
     result = subprocess.run(command, capture_output=True)
     if result.returncode != 0:
       print(f"{ip}: ping failed", file=sys.stderr)
       continue
     stats = result.stdout.decode().splitlines()[-1]
     min_time, avg_time, max_time, stddev = stats.split(" ")[3].split("/")
-    return (ip, avg_time)
+    return (ip, min_time, avg_time, max_time)
 
 def geolocate_one(ip):
+  # retry 3x
   for _ in range(3):
     res = requests.get(f"https://freeipapi.com/api/json/{ip}")
     if res.status_code != 200:
@@ -84,34 +86,46 @@ def part_1(ips):
     for ping in results:
       if ping is None:
         continue
+      ip = ping[0]
+      times = (float(t) for t in ping[1:])
       # ip : avg
-      ping_results[ping[0]] = float(ping[1])
+      ping_results[ip] = times
 
   with ThreadPoolExecutor(max_workers=10) as exec:
+    before = 0
     for i in range(0, len(ips), 30):
-      before = time.time()
+      now = time.time()
+      if now - before < 60:
+        print("geolocation: waiting to avoid rate limit")
+        time.sleep(now - before + 1)
+      before = now
+
       cur_ips = ips[i:i + 30]
       results = exec.map(geolocate_one, cur_ips)
       for geo in results:
         if geo is None:
           continue
         geo_results[geo[0]] = distance(my_location, (geo[1], geo[2]))
-      after = time.time()
-      if after - before < 60:
-        print("geolocation: waiting to avoid rate limit")
-        time.sleep(after - before + 1)
 
   x = []
-  y = []
+  min_times = []
+  avg_times = []
+  max_times = []
   for ip in ping_results:
     if ip in geo_results:
-      print(f"{ip}: avg RTT {ping_results[ip]} ms, distance {geo_results[ip]} km")
+      min_time, avg_time, max_time = ping_results[ip]
+      print(f"{ip}: min {min_time} ms, avg {avg_time} ms, max {max_time} ms, distance {geo_results[ip]} km")
       x.append(geo_results[ip])
-      y.append(ping_results[ip])
+      min_times.append(min_time)
+      avg_times.append(avg_time)
+      max_times.append(max_time)
 
-  plt.scatter(x, y)
+  plt.scatter(x, min_times, label="min RTT")
+  plt.scatter(x, avg_times, label="avg RTT")
+  plt.scatter(x, max_times, label="max RTT")
+  plt.legend(loc='lower right')
   plt.xlabel("Distance from Purdue (km)")
-  plt.ylabel("Average RTT (ms)")
+  plt.ylabel("RTT (ms)")
 
   path = "distance_rtt.png"
   plt.savefig(path, dpi=150)
