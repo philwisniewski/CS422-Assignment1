@@ -45,6 +45,7 @@ def distance(origin, destination):
 
 def ping_one(ip):
   for _ in range(3):
+    # send 3 packets and take average RTT
     command = ["ping", "-c", "3", ip]
     result = subprocess.run(command, capture_output=True)
     if result.returncode != 0:
@@ -52,7 +53,7 @@ def ping_one(ip):
       continue
     stats = result.stdout.decode().splitlines()[-1]
     min_time, avg_time, max_time, stddev = stats.split(" ")[3].split("/")
-    return (ip, min_time, avg_time, max_time)
+    return (ip, avg_time)
 
 def geolocate_one(ip):
   for _ in range(3):
@@ -62,6 +63,7 @@ def geolocate_one(ip):
       continue
     geo_data = res.json()
     if geo_data['latitude'] is None or geo_data['longitude'] is None:
+      # unknown location
       return
     return (ip, geo_data['latitude'], geo_data['longitude'])
 
@@ -99,11 +101,11 @@ def part_1(ips):
         print("geolocation: waiting to avoid rate limit")
         time.sleep(after - before + 1)
 
-  x= []
+  x = []
   y = []
   for ip in ping_results:
     if ip in geo_results:
-      print(f"{ip}: avg {ping_results[ip]}, distance {geo_results[ip]}")
+      print(f"{ip}: avg RTT{ping_results[ip]} ms, distance {geo_results[ip]} km")
       x.append(geo_results[ip])
       y.append(ping_results[ip])
 
