@@ -1,13 +1,5 @@
-import pandas as pd
-
 import subprocess
 import matplotlib.pyplot as plt
-
-FILE_PATH = "listed_iperf3_servers.csv"
-
-
-def part_1(df):
-    return
 
 def part_2(df):
     mapping = {}
@@ -66,10 +58,3 @@ def plot_scatter(mapping, path="scatter_hopcount_rtt.png"):
     plt.savefig(path, dpi=150)
     plt.close()
     print(f"[*] Saved {path}")
-
-if __name__ == "__main__":
-    df = pd.read_csv(FILE_PATH)
-
-    part_1(df)
-    mapping = part_2(df)
-    plot_scatter(mapping)
