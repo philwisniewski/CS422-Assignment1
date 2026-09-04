@@ -105,11 +105,16 @@ def part_1(ips):
   y = []
   for ip in ping_results:
     if ip in geo_results:
-      print(f"{ip}: avg RTT{ping_results[ip]} ms, distance {geo_results[ip]} km")
+      print(f"{ip}: avg RTT {ping_results[ip]} ms, distance {geo_results[ip]} km")
       x.append(geo_results[ip])
       y.append(ping_results[ip])
 
   plt.scatter(x, y)
   plt.xlabel("Distance from Purdue (km)")
   plt.ylabel("Average RTT (ms)")
-  plt.show()
+
+  path = "distance_rtt.png"
+  plt.savefig(path, dpi=150)
+  plt.close()
+
+  print(f"[*] Saved {path}")
