@@ -1,14 +1,16 @@
 import subprocess
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
-def part_2(df):
+def part_2(df, num_rows=5):
     mapping = {}
 
-    for idx, row in df.head(5).iterrows():
+    for idx, row in df.sample(n=num_rows, random_state=0).iterrows():
         print("running traceroute for ", row["IP/HOST"])
 
         traceroute_result = subprocess.run([
-                "traceroute", "-n", "-q", "1", row["IP/HOST"],
+                "traceroute", "-m", "256", "-n", "-q", "10", row["IP/HOST"],
             ], capture_output=True, text=True)
         lines = traceroute_result.stdout.splitlines()
 
@@ -16,16 +18,28 @@ def part_2(df):
         latencies = []
         # for part (c)
         num_hops = lines[-1].split()[0]
-        final_latency = float(lines[-1].split()[-2])
 
         for line in lines:
             splt = line.split()
-            if len(splt) == 4:
+            avg_lat = 0.0
+            n_lat = 0.0
+            if len(splt) >= 3:
                 # valid line
-                latencies.append(float(splt[-2]))
-        
+                for i, part in enumerate(splt):
+                    if part == "ms" and i > 0:
+                        avg_lat += (float(splt[i - 1]))
+                        n_lat += 1.0
+                # latencies.append(float(splt[-2]))
+            if n_lat > 0:
+                avg_lat /= n_lat
+                latencies.append(avg_lat)
+
         # for part (b)
-        per_hop_latencies = [latencies[i] - latencies[i - 1] for i in range(1, len(latencies))]
+        per_hop_latencies = [latencies[0]]
+        for i in range(1, len(latencies)):
+            per_hop_latencies.append(latencies[i] - latencies[i - 1])
+
+        final_latency = latencies[-1]
 
         mapping[row["IP/HOST"]] = {}
         mapping[row["IP/HOST"]]["per_hop_latencies"] = per_hop_latencies
@@ -36,13 +50,12 @@ def part_2(df):
     return mapping
 
 def plot_scatter(mapping, path="scatter_hopcount_rtt.png"):
-    """(c) Scatter: hop count vs total RTT, one point per destination."""
     fig, ax = plt.subplots(figsize=(7, 6))
     i = 0
     for dest, data in mapping.items():
-        if dest not in data["last_line"]:
-            print(f"[!] {dest} never reached destination, skipping")
-            continue
+        # if dest not in data["last_line"]:
+        #    print(f"[!] {dest} never reached destination, skipping")
+        #    continue
         hop_count = int(data["num_hops"])
         total_rtt = data["final_latency"]
         ax.scatter(hop_count, total_rtt, s=80)
@@ -54,6 +67,38 @@ def plot_scatter(mapping, path="scatter_hopcount_rtt.png"):
     ax.set_ylabel("Total RTT to destination (ms)")
     ax.set_title("Hop count vs. round-trip time")
     ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(path, dpi=150)
+    plt.close()
+    print(f"[*] Saved {path}")
+
+
+def plot_stacked_bar(mapping, path="stacked_bar_latencies.png"):
+    ips = []
+    per_hop_latencies = []
+    for k, v in mapping.items():
+        ips.append(k)
+        per_hop_latencies.append(v["per_hop_latencies"])
+
+    max_hops = max(len(hops) for hops in per_hop_latencies)
+    padded_latencies = []
+    for hops in per_hop_latencies:
+        padded = hops + [0] * (max_hops - len(hops))
+        padded_latencies.append(padded)
+
+    columns = [
+        "IP Address",
+        *[f"Hop #{i + 1}" for i in range(max_hops)]
+    ]
+
+    data = [
+        [ips[i], *padded_latencies[i]]
+        for i in range(len(ips))
+    ]
+    df = pd.DataFrame(data, columns=columns)
+    # per_hop_latencies = [[ips[i], *hop] for i, hop in enumerate(per_hop_latencies)]
+    # df = pd.DataFrame(per_hop_latencies, columns=["IP Address", *[f"Hop #{i+1}" for i, hop in enumerate(per_hop_latencies[0][1:])]])
+    df.plot(x="IP Address", kind='bar', stacked=True, title="Per Hop Latencies by IP Address")
     plt.tight_layout()
     plt.savefig(path, dpi=150)
     plt.close()

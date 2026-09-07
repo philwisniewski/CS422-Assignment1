@@ -1,5 +1,5 @@
 from part_1 import part_1
-from part_2 import part_2, plot_scatter
+from part_2 import part_2, plot_scatter, plot_stacked_bar
 
 FILE_PATH = "listed_iperf3_servers.csv"
 
@@ -33,3 +33,4 @@ if __name__ == "__main__":
     else:
         mapping = part_2(df)
         plot_scatter(mapping)
+        plot_stacked_bar(mapping)
