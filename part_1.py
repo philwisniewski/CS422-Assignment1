@@ -124,7 +124,7 @@ def part_1(ips):
   plt.scatter(x, avg_times, label="avg RTT")
   plt.scatter(x, max_times, label="max RTT")
   plt.legend(loc='lower right')
-  plt.xlabel("Distance from Purdue (km)")
+  plt.xlabel("Distance (km)")
   plt.ylabel("RTT (ms)")
 
   path = "distance_rtt.png"
