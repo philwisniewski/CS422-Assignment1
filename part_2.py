@@ -10,7 +10,7 @@ def part_2(df, num_rows=5):
         print("running traceroute for ", row["IP/HOST"])
 
         traceroute_result = subprocess.run([
-                "traceroute", "-m", "256", "-n", "-q", "10", row["IP/HOST"],
+                "traceroute", "-m", "30", "-w", "1", "-n", "-q", "10", row["IP/HOST"],
             ], capture_output=True, text=True)
         lines = traceroute_result.stdout.splitlines()
 
@@ -36,8 +36,10 @@ def part_2(df, num_rows=5):
 
         # for part (b)
         per_hop_latencies = [latencies[0]]
+        prev = latencies[0]
         for i in range(1, len(latencies)):
-            per_hop_latencies.append(latencies[i] - latencies[i - 1])
+            per_hop_latencies.append(max(0.0, latencies[i] - prev))
+            prev = max(prev, latencies[i])
 
         final_latency = latencies[-1]
 
@@ -98,8 +100,9 @@ def plot_stacked_bar(mapping, path="stacked_bar_latencies.png"):
     df = pd.DataFrame(data, columns=columns)
     # per_hop_latencies = [[ips[i], *hop] for i, hop in enumerate(per_hop_latencies)]
     # df = pd.DataFrame(per_hop_latencies, columns=["IP Address", *[f"Hop #{i+1}" for i, hop in enumerate(per_hop_latencies[0][1:])]])
-    df.plot(x="IP Address", kind='bar', stacked=True, title="Per Hop Latencies by IP Address")
+    ax = df.plot(x="IP Address", kind='bar', stacked=True, title="Per Hop Latencies by IP Address")
+    ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1), ncol=2, fontsize=8)
     plt.tight_layout()
-    plt.savefig(path, dpi=150)
+    plt.savefig(path, dpi=150, bbox_inches="tight")
     plt.close()
     print(f"[*] Saved {path}")
