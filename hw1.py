@@ -39,6 +39,7 @@ from reportlab.platypus import (
 SERVER_LIST_URL = "https://iperf3serverlist.net/"
 GEO_URL = "https://freeipapi.com/api/json/{ip}"
 IPIFY_URL = "https://api.ipify.org"
+GITHUB_URL = "https://github.com/philwisniewski/CS422-Assignment1"
 DEFAULT_OUTPUT = "output"
 DEFAULT_PING_COUNT = 5
 DEFAULT_PING_TIMEOUT = 3
@@ -674,6 +675,7 @@ def build_report(
         f"<b>Experiment date:</b> {datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')}"
     )
     report.p(f"<b>Input:</b> {input_description}")
+    report.p(f"<b>Github Repository Link:</b> {GITHUB_URL}")
     if source_ip:
         source_text = f"Source public IP: {source_ip}"
         if source_geo:
