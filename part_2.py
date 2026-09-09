@@ -20,7 +20,6 @@ def part_2(df, num_rows=5, max_hops=30):
 
         # for part (b)
         latencies = []
-        hop_ips = []
 
         cur_hop = 1
         for line in lines:
@@ -40,7 +39,6 @@ def part_2(df, num_rows=5, max_hops=30):
 
             for latency_str in items:
                 if latency_str.count(".") > 1:
-                    hop_ips.append(latency_str)
                     continue
 
                 # skip anything that isn't a latency value
@@ -57,19 +55,20 @@ def part_2(df, num_rows=5, max_hops=30):
         # for part (c)
         num_hops = cur_hop
 
-        if num_hops > max_hops:
+        if num_hops > max_hops or not avg_latencies:
             print("Status: Non-responsive")
             print()
             continue
+
+        final_latency = avg_latencies[-1]
 
         # calculate latency diff between each hop
         per_hop_latencies = []
         prev = 0.0
         for lat in avg_latencies:
-            per_hop_latencies.append(max(0.0, lat - prev))
-            prev = max(prev, lat)
-
-        final_latency = avg_latencies[-1]
+            total_lat = min(final_latency, max(prev, lat))
+            per_hop_latencies.append(total_lat - prev)
+            prev = total_lat
 
         mapping[row["IP/HOST"]] = {}
         mapping[row["IP/HOST"]]["avg_latencies"] = avg_latencies
