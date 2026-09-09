@@ -7,9 +7,10 @@ from statistics import mean
 def part_2(df, num_rows=5, max_hops=30):
     mapping = {}
 
-    responsive_ips = 0
-
     for idx, row in df.sample(frac=1, random_state=0).iterrows():
+        if len(mapping) >= num_rows:
+            break
+
         print("--- Running traceroute for", row["IP/HOST"], "---")
 
         traceroute_result = subprocess.run([
@@ -19,6 +20,7 @@ def part_2(df, num_rows=5, max_hops=30):
 
         # for part (b)
         latencies = []
+        hop_ips = []
 
         cur_hop = 1
         for line in lines:
@@ -37,6 +39,10 @@ def part_2(df, num_rows=5, max_hops=30):
                 latencies.append([])
 
             for latency_str in items[1:]:
+                if latency_str.count(".") > 1:
+                    hop_ips.append(latency_str)
+                    continue
+
                 # skip anything that isn't a latency value
                 if latency_str.count(".") != 1:
                     continue
@@ -51,13 +57,13 @@ def part_2(df, num_rows=5, max_hops=30):
         # for part (c)
         num_hops = cur_hop
 
-        if num_hops > max_hops:
+        if num_hops > max_hops or (hop_ips and row["IP/HOST"] != hop_ips[-1]):
             print("Status: Non-responsive")
             print()
             continue
 
         # calculate latency diff between each hop
-        per_hop_latencies = np.diff(np.array(avg_latencies)).tolist()
+        per_hop_latencies = np.diff(np.array([0] + avg_latencies)).tolist()
         per_hop_latencies = [max(0, lat) for lat in per_hop_latencies]
 
         final_latency = avg_latencies[-1]
@@ -74,10 +80,6 @@ def part_2(df, num_rows=5, max_hops=30):
         print("Final Latency:", final_latency)
         print("Status: Responsive")
         print()
-
-        responsive_ips += 1
-        if responsive_ips >= num_hops:
-            break
 
     return mapping
 
