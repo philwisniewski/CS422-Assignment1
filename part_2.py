@@ -49,7 +49,7 @@ def part_2(df, num_rows=5, max_hops=30):
         avg_latencies = [mean(lats) for lats in latencies if lats]
 
         # for part (c)
-        num_hops = len(avg_latencies)
+        num_hops = cur_hop
 
         if num_hops > max_hops:
             print("Status: Non-responsive")
