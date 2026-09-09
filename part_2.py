@@ -2,52 +2,68 @@ import subprocess
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from statistics import mean
 
 def part_2(df, num_rows=5):
     mapping = {}
 
     for idx, row in df.sample(n=num_rows, random_state=0).iterrows():
-        print("running traceroute for ", row["IP/HOST"])
+        print("--- Running traceroute for", row["IP/HOST"], "---")
 
         traceroute_result = subprocess.run([
-                "traceroute", "-m", "30", "-w", "1", "-n", "-q", "10", row["IP/HOST"],
+                "traceroute", "-m", "30", "-w", "1", "-q", "4", "-n", row["IP/HOST"],
             ], capture_output=True, text=True)
         lines = traceroute_result.stdout.splitlines()
 
         # for part (b)
         latencies = []
-        # for part (c)
-        num_hops = lines[-1].split()[0]
 
+        cur_hop = 1
         for line in lines:
-            splt = line.split()
-            avg_lat = 0.0
-            n_lat = 0.0
-            if len(splt) >= 3:
-                # valid line
-                for i, part in enumerate(splt):
-                    if part == "ms" and i > 0:
-                        avg_lat += (float(splt[i - 1]))
-                        n_lat += 1.0
-                # latencies.append(float(splt[-2]))
-            if n_lat > 0:
-                avg_lat /= n_lat
-                latencies.append(avg_lat)
+            items = line.split()
+
+            # update to current hop number
+            if items[0] == str(cur_hop + 1):
+                cur_hop += 1
+
+            # ignore hop num in further line parsing
+            if items[0] == str(cur_hop):
+                items = items[1:]
+
+            # allocate current hop's space in latencies list if necessary
+            if len(latencies) < cur_hop:
+                latencies.append([])
+
+            for latency_str in items[1:]:
+                # skip anything that isn't a latency value
+                if latency_str.count(".") != 1:
+                    continue
+
+                latency = float(latency_str)
+                latencies[-1].append(latency)
+
+        # for part (c)
+        num_hops = cur_hop
 
         # for part (b)
-        per_hop_latencies = [latencies[0]]
-        prev = latencies[0]
-        for i in range(1, len(latencies)):
-            per_hop_latencies.append(max(0.0, latencies[i] - prev))
-            prev = max(prev, latencies[i])
+        # calculate average latency for each hop if not all invalid
+        avg_latencies = [mean(lats) for lats in latencies if lats]
+        # calculate latency diff between each hop
+        per_hop_latencies = np.diff(np.array(avg_latencies)).tolist()
+        per_hop_latencies = [max(0, lat) for lat in per_hop_latencies]
 
-        final_latency = latencies[-1]
+        final_latency = avg_latencies[-1]
 
         mapping[row["IP/HOST"]] = {}
+        mapping[row["IP/HOST"]]["avg_latencies"] = avg_latencies
         mapping[row["IP/HOST"]]["per_hop_latencies"] = per_hop_latencies
         mapping[row["IP/HOST"]]["num_hops"] = num_hops
         mapping[row["IP/HOST"]]["final_latency"] = final_latency
-        mapping[row["IP/HOST"]]["last_line"] = lines[-1]
+
+        print("Avg Latencies per Hop:", avg_latencies)
+        print("Per Hop Latencies:", per_hop_latencies)
+        print("Num Hops:", num_hops)
+        print("Final Latency:", final_latency)
 
     return mapping
 
@@ -85,8 +101,9 @@ def plot_stacked_bar(mapping, path="stacked_bar_latencies.png"):
     max_hops = max(len(hops) for hops in per_hop_latencies)
     padded_latencies = []
     for hops in per_hop_latencies:
+        # pad the end with zeros so that the dataframe will be rectangular
         padded = hops + [0] * (max_hops - len(hops))
-        padded_latencies.append(padded)
+        padded_latencies.append(hops)
 
     columns = [
         "IP Address",
@@ -97,9 +114,8 @@ def plot_stacked_bar(mapping, path="stacked_bar_latencies.png"):
         [ips[i], *padded_latencies[i]]
         for i in range(len(ips))
     ]
+
     df = pd.DataFrame(data, columns=columns)
-    # per_hop_latencies = [[ips[i], *hop] for i, hop in enumerate(per_hop_latencies)]
-    # df = pd.DataFrame(per_hop_latencies, columns=["IP Address", *[f"Hop #{i+1}" for i, hop in enumerate(per_hop_latencies[0][1:])]])
     ax = df.plot(x="IP Address", kind='bar', stacked=True, title="Per Hop Latencies by IP Address")
     ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1), ncol=2, fontsize=8)
     plt.tight_layout()
