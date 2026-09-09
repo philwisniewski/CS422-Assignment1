@@ -38,7 +38,7 @@ def part_2(df, num_rows=5, max_hops=30):
             if len(latencies) < cur_hop:
                 latencies.append([])
 
-            for latency_str in items[1:]:
+            for latency_str in items:
                 if latency_str.count(".") > 1:
                     hop_ips.append(latency_str)
                     continue
@@ -57,14 +57,17 @@ def part_2(df, num_rows=5, max_hops=30):
         # for part (c)
         num_hops = cur_hop
 
-        if num_hops > max_hops or (hop_ips and row["IP/HOST"] != hop_ips[-1]):
+        if num_hops > max_hops:
             print("Status: Non-responsive")
             print()
             continue
 
         # calculate latency diff between each hop
-        per_hop_latencies = np.diff(np.array([0] + avg_latencies)).tolist()
-        per_hop_latencies = [max(0, lat) for lat in per_hop_latencies]
+        per_hop_latencies = []
+        prev = 0.0
+        for lat in avg_latencies:
+            per_hop_latencies.append(max(0.0, lat - prev))
+            prev = max(prev, lat)
 
         final_latency = avg_latencies[-1]
 
@@ -101,8 +104,9 @@ def plot_scatter(mapping, path="scatter_hopcount_rtt.png"):
     ax.set_ylabel("Total RTT to destination (ms)")
     ax.set_title("Hop count vs. round-trip time")
     ax.grid(True, alpha=0.3)
+    ax.margins(0.15)
     plt.tight_layout()
-    plt.savefig(path, dpi=150)
+    plt.savefig(path, dpi=150, bbox_inches="tight")
     plt.close()
     print(f"[*] Saved {path}")
 
@@ -119,7 +123,7 @@ def plot_stacked_bar(mapping, path="stacked_bar_latencies.png"):
     for hops in per_hop_latencies:
         # pad the end with zeros so that the dataframe will be rectangular
         padded = hops + [0] * (max_hops - len(hops))
-        padded_latencies.append(hops)
+        padded_latencies.append(padded)
 
     columns = [
         "IP Address",
