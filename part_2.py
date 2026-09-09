@@ -4,14 +4,16 @@ import numpy as np
 import pandas as pd
 from statistics import mean
 
-def part_2(df, num_rows=5):
+def part_2(df, num_rows=5, max_hops=30):
     mapping = {}
 
-    for idx, row in df.sample(n=num_rows, random_state=0).iterrows():
+    responsive_ips = 0
+
+    for idx, row in df.sample(frac=1, random_state=0).iterrows():
         print("--- Running traceroute for", row["IP/HOST"], "---")
 
         traceroute_result = subprocess.run([
-                "traceroute", "-m", "30", "-w", "1", "-q", "4", "-n", row["IP/HOST"],
+                "traceroute", "-m", f"{max_hops+1}", "-w", "1", "-q", "4", "-n", row["IP/HOST"],
             ], capture_output=True, text=True)
         lines = traceroute_result.stdout.splitlines()
 
@@ -42,12 +44,18 @@ def part_2(df, num_rows=5):
                 latency = float(latency_str)
                 latencies[-1].append(latency)
 
-        # for part (c)
-        num_hops = cur_hop
-
         # for part (b)
         # calculate average latency for each hop if not all invalid
         avg_latencies = [mean(lats) for lats in latencies if lats]
+
+        # for part (c)
+        num_hops = len(avg_latencies)
+
+        if num_hops > max_hops:
+            print("Status: Non-responsive")
+            print()
+            continue
+
         # calculate latency diff between each hop
         per_hop_latencies = np.diff(np.array(avg_latencies)).tolist()
         per_hop_latencies = [max(0, lat) for lat in per_hop_latencies]
@@ -64,6 +72,12 @@ def part_2(df, num_rows=5):
         print("Per Hop Latencies:", per_hop_latencies)
         print("Num Hops:", num_hops)
         print("Final Latency:", final_latency)
+        print("Status: Responsive")
+        print()
+
+        responsive_ips += 1
+        if responsive_ips >= num_hops:
+            break
 
     return mapping
 
